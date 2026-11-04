@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SRAHS BATCH 12</title>
+    <link rel="icon" href="https://i.postimg.cc/kXhnS1DX/logo.jpg" type="image/jpeg">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --primary-green: #65C15C; --bg-color: #F8F9FA; --text-dark: #2C3E50; --text-muted: #95A5A6; --white: #FFFFFF; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Lock outer window scrolling - behave like an app */
+        html, body { height: 100%; overflow: hidden; background-color: #000000; }
+        body { display: flex; justify-content: center; }
+        
+        .app-wrapper { width: 100%; max-width: 430px; height: 100%; max-height: 100%; background-color: var(--bg-color); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* Splash Screen */
+        #splash-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--primary-green); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--white); font-size: 20px; font-weight: 900; text-align: center; padding: 20px; transition: opacity 0.5s ease, visibility 0.5s ease; }
+        #splash-screen.hidden { opacity: 0; visibility: hidden; }
+        .loading-bar-container { width: 80%; height: 6px; background-color: rgba(255, 255, 255, 0.3); border-radius: 10px; margin-top: 30px; overflow: hidden; }
+        .loading-bar { height: 100%; width: 0%; background-color: var(--white); animation: fillBar 5s ease-out forwards; }
+        @keyframes fillBar { 0% { width: 0%; } 100% { width: 100%; } }
+
+        /* Header */
+        header { position: sticky; top: 0; height: 60px; min-height: 60px; background-color: var(--primary-green); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; color: var(--white); }
+        .hamburger { cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; }
+        .header-title { font-size: 17px; font-weight: 800; letter-spacing: 1px; position: absolute; left: 50%; transform: translateX(-50%); }
+        .lang-btn { color: var(--white); font-weight: bold; cursor: pointer; font-size: 14px; border: 1.5px solid var(--white); padding: 2px 8px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+        
+        /* Side Drawer Menu & Overlay */
+        #menu-overlay { position: absolute; top: 60px; left: 0; width: 100%; height: calc(100% - 60px); background: rgba(0,0,0,0.4); z-index: 85; opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
+        #menu-overlay.active { opacity: 1; visibility: visible; }
+        #side-drawer { position: absolute; top: 60px; left: 0; width: 250px; height: calc(100% - 60px); background-color: var(--white); z-index: 90; transform: translateX(-100%); transition: transform 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.05); padding-top: 20px; }
+        #side-drawer.active { transform: translateX(0); }
+        .menu-link { display: block; padding: 15px 24px; color: var(--text-dark); text-decoration: none; font-size: 16px; font-weight: bold; border-bottom: 1px solid #f0f0f0; }
+
+        /* Main Content - This is the ONLY part that scrolls */
+        #main-content { position: relative; flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 15px; }
+        
+        .hero-bg { position: absolute; top: 0; left: 0; width: 100%; height: 180px; background-color: var(--primary-green); z-index: 1; transition: height 0.3s ease; }
+        .view-container { position: relative; z-index: 10; padding: 15px 20px; }
+        .card { background: var(--white); border-radius: 16px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); margin-bottom: 12px; }
+        
+        .app-footer { padding: 15px 20px; background-color: var(--white); border-top: 1px solid #eaeaea; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+        .list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .list-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .back-btn { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; }
+        .header-spacer { width: 75px; } 
+
+        /* Image & Gallery Styles */
+        .dash-feature-img { width: 100%; border-radius: 12px; margin-top: 25px; margin-bottom: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); object-fit: cover; cursor: pointer; }
+        .dash-gallery-btn { display: block; width: 100%; text-align: center; background: var(--primary-green); color: white; padding: 14px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 15px; margin-top: 8px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(101,193,92,0.3); }
+        .dash-gallery-btn:hover, .dash-gallery-btn:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(101,193,92,0.4); }
+        
+        .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; }
+        .album-photo { background: white; padding: 8px 8px 30px 8px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
+        .album-photo img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 2px; }
+        .album-photo:active { transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
+
+        /* Full Screen Lightbox with Zoom Animation */
+        #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 99999; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+        #lightbox.active { opacity: 1; visibility: visible; }
+        
+        /* The Spring/Zoom-in animation for the image */
+        #lightbox img { max-width: 95%; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); transform: scale(0.6); opacity: 0; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease; }
+        #lightbox.active img { transform: scale(1); opacity: 1; }
+        
+        /* Clean minimalist X button */
+        .lightbox-close { position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: white; width: 40px; height: 40px; font-size: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100000; padding: 0; font-weight: 300; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <div id="splash-screen">
+            <img src="https://i.postimg.cc/kXhnS1DX/logo.jpg" alt="Logo" style="width: 75px; height: 75px; border-radius: 50%; margin-bottom: 15px; object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div>WELCOME SRAHS BATCH 12 PROGRAM</div>
+            <div class="loading-bar-container"><div class="loading-bar"></div></div>
+        </div>
+        
+        <header>
+            <div class="hamburger" id="menu-toggle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </div>
+            <div class="header-title">SRAHS 12 BATCH</div>
+            <!-- Toggle button text will be updated by JS -->
+            <div class="lang-btn" onclick="toggleLang()">EN</div>
+        </header>
+
+        <div id="menu-overlay"></div>
+
+        <div id="side-drawer">
+            <a href="#dashboard" class="menu-link" onclick="closeMenu(true)"></a>
+            <a href="#summary" class="menu-link" onclick="closeMenu(true)"></a>
+            <a href="#villages" class="menu-link" onclick="closeMenu(true)"></a>
+            <a href="#gallery" class="menu-link" onclick="closeMenu(true)"></a>
+            <a href="#about" class="menu-link" onclick="closeMenu(true)"></a>
+        </div>
+
+        <!-- This main-content area is now the only part that scrolls -->
+        <main id="main-content"></main>
+
+        <footer class="app-footer">
+            <img src="https://i.postimg.cc/kXhnS1DX/logo.jpg" alt="Logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+            <div>
+                <p style="font-weight: bold; color: var(--primary-green); font-size: 12px;">&copy; 2026 SRAHS Batch 12</p>
+                <p style="margin-top: 4px; color: var(--text-dark); font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">SHAH RAHAT ALI HIGH SCHOOL</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Lightbox Overlay -->
+    <div id="lightbox" onclick="if(event.target === this) closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <img id="lightbox-img" src="" alt="Full View">
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJsv33wyCiAQnCnUff1FT6y2u0gyPzCk4",
+            authDomain: "srahs-12.firebaseapp.com",
+            databaseURL: "https://srahs-12-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "srahs-12",
+            storageBucket: "srahs-12.firebasestorage.app",
+            messagingSenderId: "221347457810",
+            appId: "1:221347457810:web:79fd98b0ce9e0c394aa1cb"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let appData = { dashboard: { notice: {} }, members: {} };
+        
+        let minSplashTimePassed = false;
+        let dataLoaded = false;
+        let splashHidden = false;
+
+        setTimeout(() => { minSplashTimePassed = true; checkAndHideSplash(); }, 5000);
+
+        function checkAndHideSplash() {
+            if (minSplashTimePassed && dataLoaded && !splashHidden) {
+                const splash = document.getElementById('splash-screen');
+                if (splash) splash.classList.add('hidden');
+                splashHidden = true;
+            }
+        }
+
+        db.ref().on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                appData = data;
+                if(!appData.members) appData.members = {};
+            } else {
+                appData = { dashboard: { notice: {} }, members: {} };
+            }
+            router(); 
+            dataLoaded = true; checkAndHideSplash();
+        });
+
+        const menuToggle = document.getElementById('menu-toggle');
+        const sideDrawer = document.getElementById('side-drawer');
+        const menuOverlay = document.getElementById('menu-overlay');
+        let returnToMenu = false; 
+
+        menuToggle.addEventListener('click', () => {
+            const isActive = sideDrawer.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+            if(isActive) {
+                menuToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                returnToMenu = false; 
+            } else {
+                menuToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
+            }
+        });
+
+        menuOverlay.addEventListener('click', () => closeMenu(false));
+
+        function closeMenu(fromLink = false) {
+            sideDrawer.classList.remove('active');
+            menuOverlay.classList.remove('active');
+            menuToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
+            if (fromLink) returnToMenu = true;
+        }
+
+        function goBack() {
+            if (returnToMenu) {
+                window.location.hash = '#dashboard';
+                returnToMenu = false;
+                setTimeout(() => {
+                    sideDrawer.classList.add('active'); menuOverlay.classList.add('active');
+                    menuToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                }, 50);
+            } else if (window.history.length > 2) {
+                window.history.back();
+            } else {
+                window.location.hash = '#dashboard';
+            }
+        }
+
+        function openLightbox(src) {
+            const lightbox = document.getElementById('lightbox');
+            document.getElementById('lightbox-img').src = src;
+            lightbox.classList.add('active');
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
+            setTimeout(() => { document.getElementById('lightbox-img').src = ''; }, 400); // Wait for animation to finish
+        }
+
+        // --- Language Set to Bangla by Default ---
+        let currentLang = 'bn'; 
+        const text = {
+            en: {
+                fundTitle: "Fund Overview", totalCol: "Total Collected", target: "Target per person: ৳1000",
+                noticeTitle: "Latest Notice", toggleBtn: "বাং", menuDashboard: "Dashboard", menuSummary: "Donation Summary",
+                menuVillages: "Village Directory", menuGallery: "Gallery", menuAbout: "About", membersCount: "Members", 
+                noData: "Data updating...", backBtn: "Back", viewGalleryBtn: "View Photo Gallery"
+            },
+            bn: {
+                fundTitle: "তহবিল ওভারভিউ", totalCol: "মোট সংগ্রহ", target: "জনপ্রতি লক্ষ্য: ৳১০০০",
+                noticeTitle: "সর্বশেষ নোটিশ", toggleBtn: "EN", menuDashboard: "ড্যাশবোর্ড", menuSummary: "অনুদানের সারসংক্ষেপ",
+                menuVillages: "গ্রামের তালিকা", menuGallery: "গ্যালারি", menuAbout: "সম্পর্কে", membersCount: "সদস্য", 
+                noData: "তথ্য আপডেট হচ্ছে...", backBtn: "ফিরে যান", viewGalleryBtn: "ফটো গ্যালারি দেখুন"
+            }
+        };
+
+        function updateLanguageUI() {
+            document.querySelector('.lang-btn').innerText = text[currentLang].toggleBtn;
+            const menuLinks = document.querySelectorAll('.menu-link');
+            menuLinks[0].innerText = text[currentLang].menuDashboard;
+            menuLinks[1].innerText = text[currentLang].menuSummary;
+            menuLinks[2].innerText = text[currentLang].menuVillages;
+            menuLinks[3].innerText = text[currentLang].menuGallery;
+            menuLinks[4].innerText = text[currentLang].menuAbout;
+            router();
+        }
+
+        function toggleLang() {
+            currentLang = currentLang === 'en' ? 'bn' : 'en';
+            updateLanguageUI();
+        }
+
+        const mainContent = document.getElementById('main-content');
+        function router() {
+            const hash = window.location.hash || '#dashboard';
+            if (hash === '#dashboard') renderDashboard();
+            else if (hash === '#summary') renderSummary();
+            else if (hash === '#villages') renderVillages();
+            else if (hash === '#gallery') renderGallery();
+            else if (hash === '#about') renderAbout();
+        }
+
+        function renderDashboard() {
+            const t = text[currentLang];
+            let totalAmount = 0;
+            Object.values(appData.members).forEach(m => totalAmount += Number(m.amount || 0));
+
+            const n = appData.dashboard?.notice?.[currentLang] || { date: '...', title: '...', body: '...' };
+
+            mainContent.innerHTML = `
+                <div class="hero-bg" style="height:180px;"></div>
+                <div class="view-container">
+                    <h2 style="color:white; margin-bottom:20px; text-align:center; font-size: 20px;">${t.fundTitle}</h2>
+                    <div class="card" style="text-align:center;">
+                        <h3 style="color:#95A5A6; font-size:12px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">${t.totalCol}</h3>
+                        <div style="font-size:34px; color:#65C15C; font-weight:900; margin:6px 0;">৳${totalAmount.toLocaleString()}</div>
+                        <p style="font-size:12px; color:#95A5A6;">${t.target}</p>
+                    </div>
+                    <div style="text-align: center; margin: 25px 0 10px; font-size: 17px; font-weight: 800; color: var(--text-dark);">${t.noticeTitle}</div>
+                    <div class="card" style="text-align: center;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">${n.date}</div>
+                        <h3 style="color: var(--primary-green); font-size: 15px; font-weight: 700; margin-bottom: 6px;">${n.title}</h3>
+                        <p style="font-size: 13px; color: var(--text-dark); line-height: 1.5;">${n.body}</p>
+                    </div>
+                    
+                    <img src="https://i.postimg.cc/SRMbD8kH/Gemini-Generated-Image-t0bh7pt0bh7pt0bh.jpg" class="dash-feature-img" alt="Reunion Featured Image" onclick="openLightbox('https://i.postimg.cc/SRMbD8kH/Gemini-Generated-Image-t0bh7pt0bh7pt0bh.jpg')">
+                    <button class="dash-gallery-btn" onclick="window.location.hash='#gallery'">${t.viewGalleryBtn}</button>
+                </div>
+            `;
+        }
+
+        function renderSummary() {
+            const t = text[currentLang];
+            let listHTML = '';
+            let count = 0;
+            Object.values(appData.members).forEach(m => {
+                count++;
+                let amountNumber = Number(m.amount || 0);
+                let statusIndicator = amountNumber > 0 
+                    ? `<div style="font-weight:900; color:var(--primary-green); font-size:16px;">৳${amountNumber} <svg style="width:18px; height:18px; vertical-align:middle; margin-bottom:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>` 
+                    : `<div style="color:var(--text-muted);"><svg style="width:20px; height:20px; vertical-align:middle; opacity:0.4;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg></div>`;
+                listHTML += `
+                <div class="list-row">
+                    <div>
+                        <div style="font-weight:bold; color:var(--text-dark); font-size:15px;">${m.name}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">${m.village}</div>
+                    </div>
+                    ${statusIndicator}
+                </div>`;
+            });
+
+            mainContent.innerHTML = `
+                <div class="hero-bg" style="height:100px;"></div>
+                <div class="view-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <button class="back-btn" onclick="goBack()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            ${t.backBtn}
+                        </button>
+                        <h2 style="color:white; font-size: 18px; margin:0;">${t.menuSummary}</h2>
+                        <div class="header-spacer"></div>
+                    </div>
+                    <div class="card">
+                        <div style="text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:15px; text-transform:uppercase; font-weight:bold;">${count} ${t.membersCount}</div>
+                        ${listHTML || `<div style="text-align:center;">${t.noData}</div>`}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderVillages() {
+            const t = text[currentLang];
+            let grouped = {};
+            Object.values(appData.members).forEach(m => {
+                if(!grouped[m.village]) grouped[m.village] = [];
+                grouped[m.village].push(m);
+            });
+            let listHTML = '';
+            Object.keys(grouped).sort().forEach(village => {
+                listHTML += `
+                <div class="card" style="padding:16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="showVillageDetail('${village.replace(/'/g, "\\'")}')">
+                    <h3 style="color:var(--text-dark); font-size:15px; margin:0;">${village}</h3>
+                    <div style="font-size:12px; color:var(--text-dark); font-weight:bold; background:#f0f0f0; padding:5px 12px; border-radius:12px;">${grouped[village].length} ${t.membersCount} &rarr;</div>
+                </div>`;
+            });
+            mainContent.innerHTML = `
+                <div class="hero-bg" style="height:100px;"></div>
+                <div class="view-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <button class="back-btn" onclick="goBack()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            ${t.backBtn}
+                        </button>
+                        <h2 style="color:white; font-size: 18px; margin:0;">${t.menuVillages}</h2>
+                        <div class="header-spacer"></div>
+                    </div>
+                    ${listHTML || `<div class="card" style="text-align:center;">${t.noData}</div>`}
+                </div>
+            `;
+        }
+
+        window.showVillageDetail = function(villageName) {
+            const t = text[currentLang];
+            let grouped = {};
+            Object.values(appData.members).forEach(m => {
+                if(!grouped[m.village]) grouped[m.village] = [];
+                grouped[m.village].push(m);
+            });
+            let members = grouped[villageName] || [];
+            let membersList = members.map(m => {
+                 let amt = Number(m.amount || 0);
+                 let status = amt > 0 ? `<span style="font-size:14px; font-weight:800; color:var(--primary-green);">৳${amt}</span>` : `<svg style="width:18px; height:18px; color:var(--text-muted); opacity:0.4;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>`;
+                 return `<div class="list-row" style="padding: 12px 0;"><span style="font-size:15px; font-weight:600; color:var(--text-dark);">${m.name}</span>${status}</div>`;
+            }).join('');
+            mainContent.innerHTML = `
+                <div class="hero-bg" style="height:100px;"></div>
+                <div class="view-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <button class="back-btn" onclick="renderVillages()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            ${t.backBtn}
+                        </button>
+                        <h2 style="color:white; font-size: 18px; margin:0;">${villageName}</h2>
+                        <div class="header-spacer"></div>
+                    </div>
+                    <div class="card" style="padding:10px 20px;">${membersList}</div>
+                </div>
+            `;
+        }
+
+        function renderGallery() { 
+            const t = text[currentLang];
+            mainContent.innerHTML = `
+                <div class="hero-bg" style="height:100px;"></div>
+                <div class="view-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <button class="back-btn" onclick="goBack()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            ${t.backBtn}
+                        </button>
+                        <h2 style="color:white; font-size: 18px; margin:0;">${t.menuGallery}</h2>
+                        <div class="header-spacer"></div>
+                    </div>
+                    
+                    <div class="gallery-grid">
+                        <div class="album-photo" onclick="openLightbox('https://i.postimg.cc/7h3wq7d2/Gemini-Generated-Image-8ekfwb8ekfwb8ekf.jpg')">
+                            <img src="https://i.postimg.cc/7h3wq7d2/Gemini-Generated-Image-8ekfwb8ekfwb8ekf.jpg" alt="Gallery Photo 1">
+                        </div>
+                        <div class="album-photo" onclick="openLightbox('https://i.postimg.cc/bJGxJ0xw/Whats-App-Image-2026-11-04-at-9-33-43-AM.jpg')">
+                            <img src="https://i.postimg.cc/bJGxJ0xw/Whats-App-Image-2026-11-04-at-9-33-43-AM.jpg" alt="Gallery Photo 2">
+                        </div>
+                    </div>
+                </div>
+            `; 
+        }
+
+        function renderAbout() {
+            const t = text[currentLang];
+            mainContent.innerHTML = `
+                <div class="hero-bg" style="height:100px;"></div>
+                <div class="view-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <button class="back-btn" onclick="goBack()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            ${t.backBtn}
+                        </button>
+                        <h2 style="color:white; font-size: 18px; margin:0;">${t.menuAbout}</h2>
+                        <div class="header-spacer"></div>
+                    </div>
+                    <div class="card" style="text-align:center; padding: 40px 20px;">
+                        <div style="width:80px; height:80px; background-color:var(--primary-green); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:bold; margin:0 auto 15px; box-shadow: 0 4px 10px rgba(101,193,92,0.3);">SI</div>
+                        <div style="color:var(--text-muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px;">Developer Info</div>
+                        <h3 style="color:var(--text-dark); font-size:22px; margin-bottom:4px; font-weight:900; letter-spacing:0.5px;">SHARIFUL ISLAM</h3>
+                        <div style="color:var(--primary-green); font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:0;">Founder & Admin</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize language UI on load
+        window.addEventListener('load', () => {
+            updateLanguageUI();
+        });
+        window.addEventListener('hashchange', router);
+    </script>
+</body>
+</html>
